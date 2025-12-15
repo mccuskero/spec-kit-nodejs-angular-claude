@@ -1,0 +1,38 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Third-party dependencies
+3rd-Party/
+
+# Angular
+dist/
+/out-tsc/
+/bazel-out
+.angular/
+
+# Testing
+coverage/
+
+# Environment
+.env
+.env.*
+!.env.example

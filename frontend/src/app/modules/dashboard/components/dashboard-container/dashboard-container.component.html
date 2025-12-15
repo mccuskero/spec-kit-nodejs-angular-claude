@@ -1,0 +1,26 @@
+<div class="dashboard-container">
+  <app-dashboard-header (logoutClicked)="handleLogout()" />
+
+  <div class="dashboard-content">
+    <aside class="navigation-sidebar" [@sidebarState]="getSidebarState()">
+      <div class="sidebar-header">
+        <button class="toggle-button" (click)="toggleSidebar()" [attr.aria-label]="sidebarCollapsed() ? 'Expand navigation' : 'Collapse navigation'">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" [class.rotated]="!sidebarCollapsed()">
+            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+          </svg>
+        </button>
+        @if (!sidebarCollapsed()) {
+          <h2 class="sidebar-title">Navigation</h2>
+        }
+      </div>
+
+      <div class="sidebar-content">
+        <app-navigation-menu />
+      </div>
+    </aside>
+
+    <main class="workspace" [@workspaceState]="getWorkspaceState()">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,73 @@
+<!-- T027: Template with username and password input fields -->
+<div class="login-container">
+  <div class="login-card">
+    <h1>ETS-CMS Login</h1>
+
+    <!-- T049: Error alert div with role="alert" -->
+    <div *ngIf="errorMessage" class="error-alert" role="alert">
+      {{ errorMessage }}
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <!-- Username field -->
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input
+          type="text"
+          id="username"
+          formControlName="username"
+          class="form-control"
+          [class.invalid]="hasError('username')"
+        />
+        <!-- T031: Form validation error messages that display after field touched -->
+        <span *ngIf="hasError('username')" class="error-message">
+          Username is required
+        </span>
+      </div>
+
+      <!-- Password field -->
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-input-container">
+          <!-- T062: Bind input type to showPassword -->
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            id="password"
+            formControlName="password"
+            class="form-control"
+            [class.invalid]="hasError('password')"
+          />
+          <!-- T063, T064, T066: Password toggle button with icons and aria-label -->
+          <button
+            type="button"
+            class="password-toggle-btn"
+            (click)="togglePasswordVisibility()"
+            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+            tabindex="0"
+          >
+            <span *ngIf="!showPassword">👁️</span>
+            <span *ngIf="showPassword">👁️‍🗨️</span>
+          </button>
+        </div>
+        <!-- T031: Form validation error messages that display after field touched -->
+        <span *ngIf="hasError('password')" class="error-message">
+          Password is required
+        </span>
+      </div>
+
+      <!-- Submit button -->
+      <button
+        type="submit"
+        class="btn-primary"
+        [disabled]="loginForm.invalid || isLoading"
+      >
+        {{ isLoading ? 'Logging in...' : 'Login' }}
+      </button>
+
+      <!-- T072: Forgot Password link -->
+      <a href="#" class="forgot-password-link" (click)="onForgotPassword(); $event.preventDefault()">
+        Forgot Password?
+      </a>
+    </form>
+  </div>
+</div>

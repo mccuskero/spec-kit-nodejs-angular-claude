@@ -1,0 +1,43 @@
+<div class="folder-dialog">
+  <div class="dialog-header">
+    <h2>Create New Folder</h2>
+    <p class="subtitle">{{ repository() }} Repository</p>
+  </div>
+
+  <form [formGroup]="folderForm" (ngSubmit)="onSubmit()">
+    <div class="form-group">
+      <label for="folderName">Folder Name</label>
+      <input
+        type="text"
+        id="folderName"
+        formControlName="folderName"
+        class="form-control"
+        [class.error]="hasError('folderName')"
+        placeholder="Enter folder name"
+        autofocus
+      />
+      @if (hasError('folderName')) {
+        <div class="error-message">
+          @if (folderName?.errors?.['required']) {
+            Folder name is required
+          }
+          @if (folderName?.errors?.['maxlength']) {
+            Folder name must be 255 characters or less
+          }
+        </div>
+      }
+      @if (errorMessage) {
+        <div class="error-message">{{ errorMessage }}</div>
+      }
+    </div>
+
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">
+        Cancel
+      </button>
+      <button type="submit" class="btn btn-primary" [disabled]="folderForm.invalid">
+        Create Folder
+      </button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,41 @@
+<nav class="breadcrumb" aria-label="Breadcrumb navigation">
+  <ol class="breadcrumb-list">
+    <li class="breadcrumb-item">
+      <button
+        type="button"
+        class="breadcrumb-link"
+        (click)="onHomeClick()"
+        aria-label="Navigate to home"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        <span>Home</span>
+      </button>
+    </li>
+
+    @for (item of path(); track item.contentItemId; let isLast = $last) {
+      <li class="breadcrumb-separator" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+        </svg>
+      </li>
+      <li class="breadcrumb-item" [class.active]="isLast">
+        @if (isLast) {
+          <span class="breadcrumb-current" aria-current="page">
+            {{ item.displayText }}
+          </span>
+        } @else {
+          <button
+            type="button"
+            class="breadcrumb-link"
+            (click)="onBreadcrumbClick(item)"
+            [attr.aria-label]="'Navigate to ' + item.displayText"
+          >
+            {{ item.displayText }}
+          </button>
+        }
+      </li>
+    }
+  </ol>
+</nav>

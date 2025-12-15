@@ -1,0 +1,691 @@
+openapi: 3.0.3
+info:
+  title: Orchard Core Content Management API - Dashboard Integration
+  description: |
+    API contract for dashboard feature integrating with Orchard Core Content Management.
+
+    **Base URL**: `/api/content`
+    **Authentication**: Bearer JWT token (from /connect/token endpoint)
+    **Orchard Modules Required**: ContentManagement, Lists, Taxonomies, OpenId
+
+    This contract defines the subset of Orchard Core APIs used by the dashboard feature
+    for folder/content management and repository-based filtering.
+  version: 1.0.0
+  contact:
+    name: Dashboard Feature Team
+    url: https://github.com/your-org/your-repo
+
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+  - url: https://staging-api.example.com
+    description: Staging environment
+  - url: https://api.example.com
+    description: Production environment
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Authentication
+    description: JWT token management
+  - name: Folders
+    description: Folder/container operations
+  - name: Content
+    description: Content item operations
+  - name: Query
+    description: Advanced content querying (GraphQL)
+
+paths:
+  /connect/token:
+    post:
+      summary: Obtain JWT access token
+      tags: [Authentication]
+      security: []  # No auth required for login
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - grant_type
+                - username
+                - password
+                - client_id
+              properties:
+                grant_type:
+                  type: string
+                  enum: [password]
+                  description: OAuth2 grant type
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+                  example: password123
+                client_id:
+                  type: string
+                  example: angular-app
+                  description: Registered client ID in Orchard OpenId configuration
+                scope:
+                  type: string
+                  example: "openid profile roles"
+                  description: Requested OAuth scopes
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Invalid credentials or request format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/content/Folder:
+    post:
+      summary: Create new folder
+      tags: [Folders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFolderRequest'
+      responses:
+        '201':
+          description: Folder created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderResponse'
+        '400':
+          description: Invalid request (validation failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized (missing or invalid JWT token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (insufficient permissions)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/content/{contentItemId}:
+    get:
+      summary: Get content item by ID
+      tags: [Content, Folders]
+      parameters:
+        - name: contentItemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique content item ID (GUID)
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        '200':
+          description: Content item retrieved successfully
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/FolderResponse'
+                  - $ref: '#/components/schemas/ContentItemResponse'
+        '404':
+          description: Content item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+    put:
+      summary: Update content item
+      tags: [Content, Folders]
+      parameters:
+        - name: contentItemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateContentRequest'
+      responses:
+        '200':
+          description: Content item updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentItemResponse'
+        '400':
+          description: Invalid request
+        '404':
+          description: Content item not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+    delete:
+      summary: Delete content item
+      tags: [Content, Folders]
+      parameters:
+        - name: contentItemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Content item deleted successfully
+        '404':
+          description: Content item not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '409':
+          description: Conflict (e.g., folder has children)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/content:
+    get:
+      summary: Query content items
+      tags: [Content, Folders]
+      description: |
+        Query content items with optional filtering by content type.
+        For advanced filtering (repository, folder hierarchy), use GraphQL endpoint.
+      parameters:
+        - name: contentType
+          in: query
+          schema:
+            type: string
+          description: Filter by content type
+          example: Folder
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Pagination offset
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Maximum number of results
+      responses:
+        '200':
+          description: Content items retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContentItemResponse'
+        '400':
+          description: Invalid query parameters
+        '401':
+          description: Unauthorized
+
+  /api/graphql:
+    post:
+      summary: Execute GraphQL query
+      tags: [Query]
+      description: |
+        Advanced content querying with filtering by repository, folder hierarchy,
+        taxonomy terms, and other content properties.
+
+        **Example Query**:
+        ```graphql
+        query {
+          contentItems(
+            where: {
+              contentType: "Folder"
+              containedPart: { listContentItemId: "parent-folder-id" }
+            }
+            first: 50
+          ) {
+            contentItemId
+            displayText
+            createdUtc
+            modifiedUtc
+            containedPart {
+              listContentItemId
+              order
+            }
+            taxonomyPart {
+              termContentItemIds
+            }
+          }
+        }
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: GraphQL query string
+                variables:
+                  type: object
+                  description: Optional query variables
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Query executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphQLResponse'
+        '400':
+          description: Invalid GraphQL query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphQLError'
+        '401':
+          description: Unauthorized
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from /connect/token endpoint.
+        Include in Authorization header: `Bearer {token}`
+
+  schemas:
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+          example: "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE..."
+        token_type:
+          type: string
+          enum: [Bearer]
+          description: Token type (always Bearer)
+        expires_in:
+          type: integer
+          description: Token lifetime in seconds
+          example: 3600
+        refresh_token:
+          type: string
+          description: Refresh token for obtaining new access token
+        scope:
+          type: string
+          description: Granted OAuth scopes
+          example: "openid profile roles"
+
+    CreateFolderRequest:
+      type: object
+      required:
+        - DisplayText
+        - Published
+        - TaxonomyPart
+        - ListPart
+      properties:
+        DisplayText:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Folder name
+          example: "My Documents"
+        Published:
+          type: boolean
+          description: Must be true for folder to appear in queries
+          example: true
+        TaxonomyPart:
+          type: object
+          properties:
+            Repository:
+              type: array
+              items:
+                type: string
+                enum: [Local, Shared]
+              description: Repository classification
+              example: ["Local"]
+        ListPart:
+          type: object
+          description: Enables folder as container (required but empty object)
+          example: {}
+        ContainedPart:
+          type: object
+          description: Optional parent folder reference
+          properties:
+            ListContentItemId:
+              type: string
+              format: uuid
+              description: Parent folder content item ID (null for root folder)
+              example: "parent-folder-guid"
+            Order:
+              type: integer
+              minimum: 0
+              description: Display order within parent
+              default: 0
+
+    FolderResponse:
+      type: object
+      required:
+        - contentItemId
+        - contentType
+        - displayText
+        - owner
+        - createdUtc
+        - modifiedUtc
+        - published
+      properties:
+        contentItemId:
+          type: string
+          format: uuid
+          description: Unique content item ID
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        contentType:
+          type: string
+          enum: [Folder]
+          description: Content type identifier
+        displayText:
+          type: string
+          description: Folder name
+          example: "My Documents"
+        owner:
+          type: string
+          description: User ID of folder owner
+          example: "user-123"
+        author:
+          type: string
+          description: User ID of folder creator
+        createdUtc:
+          type: string
+          format: date-time
+          description: Creation timestamp (UTC)
+          example: "2025-12-13T10:30:00Z"
+        modifiedUtc:
+          type: string
+          format: date-time
+          description: Last modification timestamp (UTC)
+          example: "2025-12-13T15:45:00Z"
+        published:
+          type: boolean
+          description: Publication status
+          example: true
+        containedPart:
+          type: object
+          nullable: true
+          description: Parent folder reference (null for root)
+          properties:
+            listContentItemId:
+              type: string
+              format: uuid
+              description: Parent folder ID
+            order:
+              type: integer
+              description: Display order
+        listPart:
+          type: object
+          properties:
+            containedContentTypes:
+              type: array
+              items:
+                type: string
+              description: Allowed child content types
+              example: ["Document", "Image", "Folder"]
+            enableOrdering:
+              type: boolean
+              description: Manual ordering enabled
+              example: true
+        taxonomyPart:
+          type: object
+          properties:
+            termContentItemIds:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Taxonomy term IDs (repository classification)
+
+    ContentItemResponse:
+      type: object
+      required:
+        - contentItemId
+        - contentType
+        - displayText
+        - owner
+        - createdUtc
+        - modifiedUtc
+        - published
+      properties:
+        contentItemId:
+          type: string
+          format: uuid
+        contentType:
+          type: string
+          description: Content type (Document, Image, etc.)
+          example: "Document"
+        displayText:
+          type: string
+          description: Content item name
+        owner:
+          type: string
+        author:
+          type: string
+        createdUtc:
+          type: string
+          format: date-time
+        modifiedUtc:
+          type: string
+          format: date-time
+        published:
+          type: boolean
+        containedPart:
+          type: object
+          required:
+            - listContentItemId
+          description: Parent folder reference (required for dashboard content)
+          properties:
+            listContentItemId:
+              type: string
+              format: uuid
+              description: Parent folder ID
+            order:
+              type: integer
+        taxonomyPart:
+          type: object
+          properties:
+            termContentItemIds:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Taxonomy term IDs
+
+    UpdateContentRequest:
+      type: object
+      properties:
+        DisplayText:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Updated display text
+        Published:
+          type: boolean
+          description: Publication status
+        ContainedPart:
+          type: object
+          description: Updated parent folder reference
+          properties:
+            ListContentItemId:
+              type: string
+              format: uuid
+            Order:
+              type: integer
+
+    GraphQLResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          description: Query result data
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              message:
+                type: string
+              locations:
+                type: array
+                items:
+                  type: object
+              path:
+                type: array
+                items:
+                  type: string
+
+    GraphQLError:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Syntax error in GraphQL query"
+              extensions:
+                type: object
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Validation failed: DisplayText is required"
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "VALIDATION_ERROR"
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error context
+
+  examples:
+    CreateRootFolder:
+      summary: Create root folder in Local repository
+      value:
+        DisplayText: "My Documents"
+        Published: true
+        TaxonomyPart:
+          Repository: ["Local"]
+        ListPart: {}
+
+    CreateChildFolder:
+      summary: Create subfolder within parent
+      value:
+        DisplayText: "2025 Reports"
+        Published: true
+        TaxonomyPart:
+          Repository: ["Local"]
+        ListPart: {}
+        ContainedPart:
+          ListContentItemId: "parent-folder-guid"
+          Order: 0
+
+    FolderQueryGraphQL:
+      summary: Query folders in Local repository
+      value:
+        query: |
+          query {
+            contentItems(
+              where: {
+                contentType: "Folder"
+                taxonomy: {
+                  termContentItemIds: ["local-repository-term-id"]
+                }
+              }
+              first: 50
+              orderBy: { displayText: ASC }
+            ) {
+              contentItemId
+              displayText
+              createdUtc
+              modifiedUtc
+              containedPart {
+                listContentItemId
+                order
+              }
+            }
+          }
+
+    FolderContentsGraphQL:
+      summary: Query content items within a folder
+      value:
+        query: |
+          query($folderId: String!) {
+            contentItems(
+              where: {
+                containedPart: { listContentItemId: $folderId }
+              }
+              first: 100
+              orderBy: { modifiedUtc: DESC }
+            ) {
+              contentItemId
+              contentType
+              displayText
+              createdUtc
+              modifiedUtc
+              owner
+            }
+          }
+        variables:
+          folderId: "folder-guid-here"

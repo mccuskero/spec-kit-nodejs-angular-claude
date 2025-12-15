@@ -1,0 +1,166 @@
+<div class="folder-list">
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+  } @else if (allItems().length === 0) {
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+      </svg>
+      <p>{{ emptyMessage() }}</p>
+    </div>
+  } @else {
+    <!-- Bulk Actions Toolbar -->
+    @if (hasSelection()) {
+      <div class="bulk-actions-toolbar">
+        <span class="selection-count">{{ selectedItems().size }} item(s) selected</span>
+        <div class="bulk-actions">
+          <button class="action-btn" (click)="performBulkAction('publish')">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M5 4v2h14V4H5zm0 10h4v6h6v-6h4l-7-7-7 7z"/>
+            </svg>
+            Publish
+          </button>
+          <button class="action-btn" (click)="performBulkAction('unpublish')">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/>
+            </svg>
+            Unpublish
+          </button>
+          <button class="action-btn delete-btn" (click)="performBulkAction('delete')">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+            </svg>
+            Delete
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- File List Table -->
+    <div class="list-table-container">
+      <table class="list-table">
+        <thead>
+          <tr>
+            <th class="col-checkbox">
+              <input
+                type="checkbox"
+                [checked]="allSelected()"
+                [indeterminate]="someSelected()"
+                (change)="toggleSelectAll()"
+              />
+            </th>
+            <th class="col-name">Name</th>
+            <th class="col-author">Author</th>
+            <th class="col-modified">Last Updated</th>
+            <th class="col-type">Type</th>
+            <th class="col-size">Size</th>
+            <th class="col-status">Status</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Folders -->
+          @for (folder of folders(); track folder.contentItemId) {
+            <tr class="list-row folder-row" [class.selected]="isSelected(folder.contentItemId)">
+              <td class="col-checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="isSelected(folder.contentItemId)"
+                  (change)="toggleSelect(folder.contentItemId)"
+                  (click)="$event.stopPropagation()"
+                />
+              </td>
+              <td class="col-name" (click)="onFolderClick(folder)">
+                <div class="name-cell">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="item-icon">
+                    <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                  </svg>
+                  <span>{{ folder.displayText }}</span>
+                </div>
+              </td>
+              <td class="col-author">{{ folder.author || folder.owner }}</td>
+              <td class="col-modified">{{ formatDate(folder.modifiedUtc) }}</td>
+              <td class="col-type">Folder</td>
+              <td class="col-size">—</td>
+              <td class="col-status">
+                <span class="status-badge" [class.published]="folder.published">
+                  {{ getPublishedStatus(folder) }}
+                </span>
+              </td>
+              <td class="col-actions">
+                <div class="action-dropdown">
+                  <button class="action-menu-btn" (click)="$event.stopPropagation()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                    </svg>
+                  </button>
+                  <div class="dropdown-menu">
+                    <button (click)="performAction('edit', folder); $event.stopPropagation()">Edit</button>
+                    @if (!folder.published) {
+                      <button (click)="performAction('publish', folder); $event.stopPropagation()">Publish</button>
+                    } @else {
+                      <button (click)="performAction('unpublish', folder); $event.stopPropagation()">Unpublish</button>
+                    }
+                    <button class="delete-action" (click)="performAction('delete', folder); $event.stopPropagation()">Delete</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          }
+
+          <!-- Content Items -->
+          @for (item of items(); track item.contentItemId) {
+            <tr class="list-row item-row" [class.selected]="isSelected(item.contentItemId)">
+              <td class="col-checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="isSelected(item.contentItemId)"
+                  (change)="toggleSelect(item.contentItemId)"
+                  (click)="$event.stopPropagation()"
+                />
+              </td>
+              <td class="col-name" (click)="onItemClick(item)">
+                <div class="name-cell">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="item-icon">
+                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                  </svg>
+                  <span>{{ item.displayText }}</span>
+                </div>
+              </td>
+              <td class="col-author">{{ item.author || item.owner }}</td>
+              <td class="col-modified">{{ formatDate(item.modifiedUtc) }}</td>
+              <td class="col-type">{{ getFileType(item) }}</td>
+              <td class="col-size">{{ getFileSize(item) }}</td>
+              <td class="col-status">
+                <span class="status-badge" [class.published]="item.published">
+                  {{ getPublishedStatus(item) }}
+                </span>
+              </td>
+              <td class="col-actions">
+                <div class="action-dropdown">
+                  <button class="action-menu-btn" (click)="$event.stopPropagation()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                    </svg>
+                  </button>
+                  <div class="dropdown-menu">
+                    <button (click)="performAction('edit', item); $event.stopPropagation()">Edit</button>
+                    @if (!item.published) {
+                      <button (click)="performAction('publish', item); $event.stopPropagation()">Publish</button>
+                    } @else {
+                      <button (click)="performAction('unpublish', item); $event.stopPropagation()">Unpublish</button>
+                    }
+                    <button class="delete-action" (click)="performAction('delete', item); $event.stopPropagation()">Delete</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

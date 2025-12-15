@@ -1,0 +1,352 @@
+openapi: 3.0.3
+info:
+  title: ETS-CMS Authentication API
+  description: |
+    Authentication endpoints for the ETS-CMS login screen feature.
+    These endpoints are provided by Orchard Core and consumed by the Angular frontend.
+  version: 1.0.0
+  contact:
+    name: ETS-CMS Team
+
+servers:
+  - url: http://localhost:5000/api
+    description: Development server (Orchard Core via docker-compose)
+  - url: https://api.ets-cms.example.com/api
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication operations
+
+paths:
+  /Users/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user with username and password
+      description: |
+        Validates user credentials against Orchard Core user database.
+        Returns JWT access token on successful authentication.
+
+        **Security Note**: Error responses use generic messages to prevent user enumeration attacks.
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              validCredentials:
+                summary: Valid login attempt
+                value:
+                  userName: "admin"
+                  password: "SecurePassword123!"
+                  rememberMe: false
+              withRememberMe:
+                summary: Login with remember me
+                value:
+                  userName: "user@example.com"
+                  password: "MyPassword456"
+                  rememberMe: true
+      responses:
+        '200':
+          description: Authentication successful
+          headers:
+            Set-Cookie:
+              description: HTTP-only cookie with JWT token (if cookie-based auth)
+              schema:
+                type: string
+                example: auth_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Strict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+              examples:
+                success:
+                  summary: Successful authentication
+                  value:
+                    success: true
+                    accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+                    refreshToken: "8f9a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
+                    expiresAt: 1735689600
+                    user:
+                      id: "12345"
+                      username: "admin"
+                      email: "admin@example.com"
+                      displayName: "Admin User"
+                      roles: ["Administrator", "Editor"]
+        '401':
+          description: Authentication failed - Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginErrorResponse'
+              examples:
+                invalidCredentials:
+                  summary: Invalid username or password
+                  value:
+                    success: false
+                    error: "Invalid username or password. Please try again."
+                    errorCode: "INVALID_CREDENTIALS"
+        '423':
+          description: Account locked or disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginErrorResponse'
+              examples:
+                accountLocked:
+                  summary: Account is locked
+                  value:
+                    success: false
+                    error: "Your account has been locked. Please contact support."
+                    errorCode: "ACCOUNT_LOCKED"
+        '429':
+          description: Too many login attempts - Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginErrorResponse'
+              examples:
+                rateLimited:
+                  summary: Too many attempts
+                  value:
+                    success: false
+                    error: "Too many login attempts. Please try again later."
+                    errorCode: "RATE_LIMITED"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginErrorResponse'
+              examples:
+                serverError:
+                  summary: Internal server error
+                  value:
+                    success: false
+                    error: "An error occurred. Please try again later."
+                    errorCode: "SERVER_ERROR"
+
+  /Users/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout current user
+      description: |
+        Invalidates the current user session and clears authentication tokens.
+        Requires valid authentication token in request.
+      operationId: logoutUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Logged out successfully"
+        '401':
+          description: Unauthorized - No valid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /Users/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: |
+        Obtains a new access token using a valid refresh token.
+        Used to extend user session without requiring re-authentication.
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+                  description: Valid refresh token from previous login
+                  example: "8f9a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  accessToken:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  expiresAt:
+                    type: integer
+                    format: int64
+                    description: Unix timestamp when token expires
+                    example: 1735689600
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /Users/login endpoint
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - userName
+        - password
+      properties:
+        userName:
+          type: string
+          description: Username or email address
+          minLength: 1
+          maxLength: 256
+          example: "admin"
+        password:
+          type: string
+          description: User password
+          format: password
+          minLength: 6
+          maxLength: 100
+          example: "SecurePassword123!"
+        rememberMe:
+          type: boolean
+          description: Extend session duration if true
+          default: false
+          example: false
+
+    LoginSuccessResponse:
+      type: object
+      required:
+        - success
+        - accessToken
+        - expiresAt
+        - user
+      properties:
+        success:
+          type: boolean
+          description: Always true for successful responses
+          example: true
+        accessToken:
+          type: string
+          description: JWT access token for authenticated requests
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refreshToken:
+          type: string
+          description: Optional refresh token for session renewal
+          example: "8f9a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
+        expiresAt:
+          type: integer
+          format: int64
+          description: Unix timestamp when access token expires
+          example: 1735689600
+        user:
+          $ref: '#/components/schemas/UserInfo'
+
+    LoginErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+        - errorCode
+      properties:
+        success:
+          type: boolean
+          description: Always false for error responses
+          example: false
+        error:
+          type: string
+          description: User-friendly error message
+          example: "Invalid username or password. Please try again."
+        errorCode:
+          type: string
+          description: Machine-readable error code
+          enum:
+            - INVALID_CREDENTIALS
+            - ACCOUNT_LOCKED
+            - ACCOUNT_DISABLED
+            - RATE_LIMITED
+            - SERVER_ERROR
+            - NETWORK_ERROR
+            - UNKNOWN
+          example: "INVALID_CREDENTIALS"
+
+    UserInfo:
+      type: object
+      required:
+        - id
+        - username
+      properties:
+        id:
+          type: string
+          description: Unique user identifier
+          example: "12345"
+        username:
+          type: string
+          description: User's username
+          example: "admin"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "admin@example.com"
+        displayName:
+          type: string
+          description: User's display name
+          example: "Admin User"
+        roles:
+          type: array
+          description: User's assigned roles
+          items:
+            type: string
+          example: ["Administrator", "Editor"]
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          description: Always false for error responses
+          example: false
+        error:
+          type: string
+          description: Error message
+          example: "An error occurred"
+        errorCode:
+          type: string
+          description: Optional error code
+          example: "UNKNOWN_ERROR"
+
+security:
+  - BearerAuth: []

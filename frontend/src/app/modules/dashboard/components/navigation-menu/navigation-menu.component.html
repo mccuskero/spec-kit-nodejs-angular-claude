@@ -1,0 +1,81 @@
+<nav class="navigation-menu">
+  <!-- Repository Location Selector -->
+  <div class="repository-selector">
+    @if (!sidebarCollapsed()) {
+      <h3 class="section-title">Repository</h3>
+    }
+    <div class="radio-group" [class.collapsed]="sidebarCollapsed()">
+      <label class="radio-option" [class.active]="repositoryLocation() === 'Local'">
+        <input
+          type="radio"
+          name="repository"
+          value="Local"
+          [checked]="repositoryLocation() === 'Local'"
+          (change)="setRepositoryLocation('Local')"
+        />
+        @if (!sidebarCollapsed()) {
+          <span>Local</span>
+        } @else {
+          <span class="icon-only" title="Local">L</span>
+        }
+      </label>
+      <label class="radio-option" [class.active]="repositoryLocation() === 'Shared'">
+        <input
+          type="radio"
+          name="repository"
+          value="Shared"
+          [checked]="repositoryLocation() === 'Shared'"
+          (change)="setRepositoryLocation('Shared')"
+        />
+        @if (!sidebarCollapsed()) {
+          <span>Shared</span>
+        } @else {
+          <span class="icon-only" title="Shared">S</span>
+        }
+      </label>
+    </div>
+  </div>
+
+  <!-- Navigation Sections -->
+  <div class="navigation-sections">
+    @if (!sidebarCollapsed()) {
+      <h3 class="section-title">Sections</h3>
+    }
+    <ul class="nav-list">
+      @for (item of navigationItems; track item.id) {
+        <li>
+          <button
+            class="nav-button"
+            [class.active]="isActive(item.id)"
+            (click)="navigateToSection(item.id)"
+            [attr.aria-label]="item.label"
+            [attr.aria-current]="isActive(item.id) ? 'page' : null"
+          >
+            <span class="nav-icon" [attr.data-icon]="item.icon">
+              @switch (item.icon) {
+                @case ('article') {
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                  </svg>
+                }
+                @case ('folder') {
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                  </svg>
+                }
+                @case ('history') {
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                  </svg>
+                }
+              }
+            </span>
+            @if (!sidebarCollapsed()) {
+              <span class="nav-label">{{ item.label }}</span>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  </div>
+</nav>

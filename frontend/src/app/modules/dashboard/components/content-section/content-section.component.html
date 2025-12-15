@@ -1,0 +1,70 @@
+<div class="content-section">
+  <!-- Breadcrumb Navigation -->
+  @if (breadcrumbPath().length > 0) {
+    <app-breadcrumb
+      [path]="breadcrumbPath()"
+      (breadcrumbClicked)="onBreadcrumbClick($event)"
+      (homeClicked)="onHomeClick()"
+    />
+  }
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <h2>{{ breadcrumbPath().length > 0 ? breadcrumbPath()[breadcrumbPath().length - 1].displayText : 'Root' }}</h2>
+    </div>
+    <div class="toolbar-right">
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="onCreateFolderClick()"
+        [disabled]="!canCreateFolder()"
+        [title]="!canCreateFolder() ? 'Maximum folder depth reached' : 'Create new folder'"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+        </svg>
+        <span>New Folder</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  @if (errorMessage()) {
+    <div class="error-banner">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+      </svg>
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="close-btn" (click)="errorMessage.set(null)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+        </svg>
+      </button>
+    </div>
+  }
+
+  <!-- Folder Dialog -->
+  @if (showFolderDialog()) {
+    <div class="dialog-overlay" (click)="onFolderDialogCancelled()">
+      <div class="dialog-container" (click)="$event.stopPropagation()">
+        <app-folder-dialog
+          [repository]="repositoryLocation()"
+          [parentFolderId]="currentFolderId() || undefined"
+          (folderCreated)="onFolderCreated($event)"
+          (cancelled)="onFolderDialogCancelled()"
+        />
+      </div>
+    </div>
+  }
+
+  <!-- Folder and Content List -->
+  <app-folder-list
+    [folders]="folders()"
+    [items]="items()"
+    [isLoading]="isLoading()"
+    [emptyMessage]="breadcrumbPath().length > 0 ? 'This folder is empty' : 'No folders found. Create your first folder to get started.'"
+    (folderClicked)="onFolderClick($event)"
+    (itemClicked)="onItemClick($event)"
+  />
+</div>
