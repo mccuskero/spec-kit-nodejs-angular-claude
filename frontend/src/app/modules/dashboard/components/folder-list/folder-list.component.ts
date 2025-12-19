@@ -21,6 +21,8 @@ export class FolderListComponent {
   items = input<ContentItem[]>([]);
   isLoading = input<boolean>(false);
   emptyMessage = input<string>('No folders or items found');
+  isInsideFolder = input<boolean>(false);
+  totalSize = input<number>(0);
 
   folderClicked = output<Folder>();
   itemClicked = output<ContentItem>();
@@ -32,6 +34,10 @@ export class FolderListComponent {
   // Computed properties
   allItems = computed(() => {
     return [...this.folders(), ...this.items()];
+  });
+
+  formattedTotalSize = computed(() => {
+    return this.contentService.formatFileSize(this.totalSize());
   });
 
   hasSelection = computed(() => this.selectedItems().size > 0);

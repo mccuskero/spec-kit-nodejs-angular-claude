@@ -14,6 +14,8 @@ export interface ContentItem {
   contentSize?: number; // File size in bytes
   mimeType?: string; // File MIME type
   fileExtension?: string; // File extension
+  mediaPath?: string; // Media file path
+  mediaUrl?: string; // Media file URL
   [key: string]: any;
 }
 

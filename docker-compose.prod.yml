@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for OrchardCore
+  db:
+    image: postgres:16-alpine
+    container_name: nodejs-test-claude-db-prod
+    environment:
+      POSTGRES_DB: orchardcore
+      POSTGRES_USER: orcharduser
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-orchardpassword}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orcharduser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # OrchardCore backend
+  backend:
+    build:
+      context: ./3rd-Party/OrchardCore
+      dockerfile: Dockerfile
+    container_name: nodejs-test-claude-backend-prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db;Database=orchardcore;Username=orcharduser;Password=${DB_PASSWORD:-orchardpassword}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: always
+
+  # Angular frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nodejs-test-claude-frontend-prod
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: always
+
+volumes:
+  postgres_data_prod:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

@@ -6,6 +6,33 @@
   flex-direction: column;
 }
 
+// Folder Info Header
+.folder-info-header {
+  padding: 0.75rem 1rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+
+  .folder-stats {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: #495057;
+
+      svg {
+        width: 18px;
+        height: 18px;
+        color: #6c757d;
+      }
+    }
+  }
+}
+
 .loading-state,
 .empty-state {
   display: flex;
@@ -260,6 +287,29 @@
 
         &.col-actions {
           text-align: center;
+        }
+      }
+    }
+
+    // Empty table row
+    tr.empty-row {
+      td {
+        padding: 2rem;
+        text-align: center;
+
+        .empty-table-message {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.75rem;
+          color: #6c757d;
+          font-size: 0.9375rem;
+
+          svg {
+            width: 24px;
+            height: 24px;
+            color: #adb5bd;
+          }
         }
       }
     }

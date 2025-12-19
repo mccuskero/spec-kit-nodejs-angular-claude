@@ -1,0 +1,100 @@
+<div class="file-upload-dialog">
+  <div class="dialog-header">
+    <h3>Upload File</h3>
+    <button type="button" class="close-btn" (click)="onCancel()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+      </svg>
+    </button>
+  </div>
+
+  <form (ngSubmit)="onSubmit()">
+    <!-- Drag and Drop Area -->
+    <div class="upload-section">
+      @if (!selectedFile()) {
+        <div
+          class="drop-zone"
+          [class.dragging]="isDragging()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="upload-icon">
+            <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
+          </svg>
+          <h4>Drag and drop a file here</h4>
+          <p>or</p>
+          <label for="file-input" class="file-input-label">
+            <input
+              type="file"
+              id="file-input"
+              class="file-input"
+              (change)="onFileSelected($event)"
+            />
+            <span class="btn btn-primary">Browse Files</span>
+          </label>
+          <p class="file-hint">Maximum file size: 100MB</p>
+        </div>
+      } @else {
+        <div class="selected-file">
+          <div class="file-info">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="file-icon">
+              <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+            </svg>
+            <div class="file-details">
+              <p class="file-name">{{ selectedFile()!.name }}</p>
+              <p class="file-size">{{ formatFileSize(selectedFile()!.size) }}</p>
+            </div>
+          </div>
+          <button type="button" class="remove-btn" (click)="removeFile()" title="Remove file">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- Display Name Input -->
+    @if (selectedFile()) {
+      <div class="form-group">
+        <label for="display-text">Display Name</label>
+        <input
+          type="text"
+          id="display-text"
+          class="form-control"
+          [(ngModel)]="displayText"
+          name="displayText"
+          placeholder="Enter a display name for this file"
+          required
+          maxlength="100"
+        />
+        <small class="form-hint">This name will be shown in the file list</small>
+      </div>
+    }
+
+    <!-- Error Message -->
+    @if (errorMessage()) {
+      <div class="error-message">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+
+    <!-- Action Buttons -->
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()">
+        Cancel
+      </button>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="!selectedFile()"
+      >
+        Upload File
+      </button>
+    </div>
+  </form>
+</div>

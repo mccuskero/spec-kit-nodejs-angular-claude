@@ -4,7 +4,8 @@
       <div class="spinner"></div>
       <p>Loading...</p>
     </div>
-  } @else if (allItems().length === 0) {
+  } @else if (!isInsideFolder() && allItems().length === 0) {
+    <!-- Empty state only shown at root level when no folders exist -->
     <div class="empty-state">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
         <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
@@ -12,6 +13,34 @@
       <p>{{ emptyMessage() }}</p>
     </div>
   } @else {
+    <!-- Folder Info Header (shown when inside a folder) -->
+    @if (isInsideFolder()) {
+      <div class="folder-info-header">
+        <div class="folder-stats">
+          <span class="stat-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+            </svg>
+            {{ items().length }} file(s)
+          </span>
+          <span class="stat-item">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+            </svg>
+            {{ folders().length }} folder(s)
+          </span>
+          @if (totalSize() > 0) {
+            <span class="stat-item">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2 20h20v-4H2v4zm2-3h2v2H4v-2zM2 4v4h20V4H2zm4 3H4V5h2v2zm-4 7h20v-4H2v4zm2-3h2v2H4v-2z"/>
+              </svg>
+              {{ formattedTotalSize() }}
+            </span>
+          }
+        </div>
+      </div>
+    }
+
     <!-- Bulk Actions Toolbar -->
     @if (hasSelection()) {
       <div class="bulk-actions-toolbar">
@@ -155,6 +184,20 @@
                     }
                     <button class="delete-action" (click)="performAction('delete', item); $event.stopPropagation()">Delete</button>
                   </div>
+                </div>
+              </td>
+            </tr>
+          }
+
+          <!-- Empty table row when inside folder but no items -->
+          @if (isInsideFolder() && allItems().length === 0) {
+            <tr class="empty-row">
+              <td colspan="8">
+                <div class="empty-table-message">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                  </svg>
+                  <span>This folder is empty. Click "+ File" to add files.</span>
                 </div>
               </td>
             </tr>

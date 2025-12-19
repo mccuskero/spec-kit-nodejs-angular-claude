@@ -56,6 +56,15 @@
     }
   }
 
+  &.btn-secondary {
+    background: #6c757d;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: #545b62;
+    }
+  }
+
   &:focus {
     outline: 2px solid #007bff;
     outline-offset: 2px;
@@ -121,9 +130,9 @@
 }
 
 .dialog-container {
-  max-width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
+  width: auto;
+  max-width: calc(100vw - 4rem);
+  max-height: calc(100vh - 4rem);
 }
 
 @media (max-width: 768px) {

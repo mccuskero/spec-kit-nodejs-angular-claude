@@ -81,9 +81,10 @@ RESPONSE=$(curl -s -X POST "$ORCHARD_URL/connect/token" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "grant_type=password&username=$USERNAME&password=$PASSWORD&client_id=$CLIENT_ID&scope=openid profile roles")
 
-echo $(curl -s -X POST "$ORCHARD_URL/connect/token" \
-    -H "Content-Type: application/x-www-form-urlencoded" \
-    -d "grant_type=password&username=$USERNAME&password=$PASSWORD&client_id=$CLIENT_ID&scope=openid profile roles")
+# this will display the token
+# echo $(curl -s -X POST "$ORCHARD_URL/connect/token" \
+#    -H "Content-Type: application/x-www-form-urlencoded" \
+#    -d "grant_type=password&username=$USERNAME&password=$PASSWORD&client_id=$CLIENT_ID&scope=openid profile roles")
 
 # Check response
 if echo "$RESPONSE" | grep -q "access_token"; then

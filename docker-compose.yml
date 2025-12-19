@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for OrchardCore
+  db:
+    image: postgres:16-alpine
+    container_name: nodejs-test-claude-db
+    environment:
+      POSTGRES_DB: orchardcore
+      POSTGRES_USER: orcharduser
+      POSTGRES_PASSWORD: orchardpassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orcharduser -d orchardcore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # OrchardCore backend
+  backend:
+    build:
+      context: .
+      dockerfile: ./3rd-Party/OrchardCore/Dockerfile
+    container_name: nodejs-test-claude-backend
+    ports:
+      - "8080:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db;Port=5432;Database=orchardcore;User Id=orcharduser;Password=orchardpassword;Include Error Detail=true
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Angular frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nodejs-test-claude-frontend
+    ports:
+      - "4200:80"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

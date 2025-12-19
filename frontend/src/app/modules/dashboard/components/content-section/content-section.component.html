@@ -24,8 +24,22 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
           <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
         </svg>
-        <span>New Folder</span>
+        <span>Folder</span>
       </button>
+      @if (showFileButton()) {
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="onCreateFileClick()"
+          [disabled]="!canCreateFile()"
+          title="Create new file"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+          </svg>
+          <span>File</span>
+        </button>
+      }
     </div>
   </div>
 
@@ -58,13 +72,30 @@
     </div>
   }
 
+  <!-- File Upload Dialog -->
+  @if (showFileDialog()) {
+    <div class="dialog-overlay" (click)="onFileDialogCancelled()">
+      <div class="dialog-container" (click)="$event.stopPropagation()">
+        <app-file-upload-dialog
+          [repository]="repositoryLocation()"
+          [folderId]="currentFolderId() || ''"
+          (fileUploaded)="onFileUploaded($event)"
+          (cancelled)="onFileDialogCancelled()"
+        />
+      </div>
+    </div>
+  }
+
   <!-- Folder and Content List -->
   <app-folder-list
     [folders]="folders()"
     [items]="items()"
     [isLoading]="isLoading()"
+    [isInsideFolder]="isInsideFolder()"
+    [totalSize]="totalSize()"
     [emptyMessage]="breadcrumbPath().length > 0 ? 'This folder is empty' : 'No folders found. Create your first folder to get started.'"
     (folderClicked)="onFolderClick($event)"
     (itemClicked)="onItemClick($event)"
+    (actionPerformed)="onActionPerformed($event)"
   />
 </div>

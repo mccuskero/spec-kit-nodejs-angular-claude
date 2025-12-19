@@ -305,7 +305,7 @@ A user can create, read, update, and delete files within folders, with proper va
 ### Content Section Workspace
 
 When Content section is active, the workspace displays:
-- List of folders and content items in current location
+- List of folders and content items (files in the folders) in current location
 - "Add Folder" button
 - "Add Content" button (when inside a folder)
 - Breadcrumb navigation showing current path

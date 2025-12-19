@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of, forkJoin } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
-import { Folder } from '../models/folder.model';
+import { Folder, MediaItem } from '../models/folder.model';
 import { ContentItem, CreateFileRequest, UpdateFileRequest, BulkActionRequest } from '../models/content-item.model';
 import { BreadcrumbItem, RepositoryLocation } from '../models/dashboard-state.model';
 
@@ -21,6 +21,7 @@ interface FolderQueryResponse {
 interface ContentQueryResponse {
   items: ContentItem[];
   totalCount: number;
+  totalSize?: number;
 }
 
 @Injectable({
@@ -28,6 +29,7 @@ interface ContentQueryResponse {
 })
 export class ContentService {
   private readonly API_URL = environment.orchardApiUrl;
+  private readonly MEDIA_API_URL = environment.orchardMediaApiUrl;
   private readonly GRAPHQL_URL = environment.orchardGraphQLUrl;
   private readonly MAX_BREADCRUMB_DEPTH = 10;
 
@@ -71,10 +73,10 @@ export class ContentService {
    * @returns Observable of folder query response
    */
   queryFolders(repository: RepositoryLocation, parentFolderId?: string): Observable<FolderQueryResponse> {
-    // Use GraphQL 'folder' query (not 'contentItems')
+    // Use GraphQL 'folder' query - returns all folders, filter client-side
     const query = `
       query QueryFolders {
-        folder(first: 100) {
+        folder {
           contentItemId
           displayText
           owner
@@ -93,11 +95,14 @@ export class ContentService {
       map(response => {
         let folders = response.data?.folder || [];
 
-        // Client-side filtering for parent folder (GraphQL doesn't expose containedPart in where clause)
+        // Client-side filtering for parent folder and repository
         if (parentFolderId) {
           folders = folders.filter(f =>
             (f as any).containedPart?.listContentItemId === parentFolderId
           );
+        } else {
+          // Filter for root folders (no parent)
+          folders = folders.filter(f => !(f as any).containedPart?.listContentItemId);
         }
 
         return {
@@ -118,10 +123,56 @@ export class ContentService {
    * @returns Observable of content query response
    */
   queryContent(folderId: string): Observable<ContentQueryResponse> {
-    // For now, return empty as we don't have a GraphQL query for generic content items
-    // Files will be queried separately when that content type is defined in Orchard Core
-    // TODO: Add proper content query when File content type is configured
-    return of({ items: [], totalCount: 0 });
+    return this.getFolderById(folderId).pipe(
+      map(folder => {
+        if (!folder) {
+          return { items: [], totalCount: 0, totalSize: 0 };
+        }
+
+        // Handle both camelCase (mediaItems) and PascalCase (MediaItems) from OrchardCore
+        const mediaItems: MediaItem[] = folder.mediaItems || (folder as any).MediaItems || [];
+
+        console.log('Folder data:', folder);
+        console.log('MediaItems found:', mediaItems);
+
+        if (mediaItems.length === 0) {
+          return { items: [], totalCount: 0, totalSize: 0 };
+        }
+
+        // Transform MediaItems to ContentItem format
+        const items: ContentItem[] = mediaItems.map((mediaItem, index) => ({
+          contentItemId: mediaItem.path,
+          contentType: 'MediaFile',
+          displayText: mediaItem.name,
+          owner: folder.owner || 'current-user',
+          author: folder.author || folder.owner || 'current-user',
+          createdUtc: mediaItem.createdUtc || new Date(),
+          modifiedUtc: mediaItem.createdUtc || new Date(),
+          published: true,
+          containedPart: {
+            listContentItemId: folderId,
+            order: index
+          },
+          taxonomyPart: {
+            repository: folder.taxonomyPart?.repository || 'Local'
+          },
+          contentSize: mediaItem.size,
+          mimeType: mediaItem.mimeType,
+          fileExtension: mediaItem.name?.split('.').pop() || '',
+          mediaPath: mediaItem.path,
+          mediaUrl: mediaItem.url
+        }));
+
+        // Calculate total size
+        const totalSize = mediaItems.reduce((sum, item) => sum + (item.size || 0), 0);
+
+        return { items, totalCount: items.length, totalSize };
+      }),
+      catchError(error => {
+        console.error('Error querying content:', error);
+        return of({ items: [], totalCount: 0, totalSize: 0 });
+      })
+    );
   }
 
   /**
@@ -249,6 +300,144 @@ export class ContentService {
     return this.http.post<ContentItem>(this.API_URL, payload).pipe(
       catchError(error => {
         console.error('Error creating file:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * Upload a file with actual file data
+   * @param file File to upload
+   * @param displayText Display name for the file
+   * @param repository Repository location
+   * @param folderId Parent folder ID
+   * @returns Observable of created content item
+   */
+  uploadFile(
+    file: File,
+    displayText: string,
+    repository: RepositoryLocation,
+    folderId: string
+  ): Observable<ContentItem> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('path', folderId); // Upload to folder path
+
+    // Use Media API endpoint directly (matches test-add-file.sh)
+    console.log('Uploading to:', this.MEDIA_API_URL);
+    return this.http.post<any>(this.MEDIA_API_URL, formData).pipe(
+      switchMap(mediaResponse => {
+        // Transform media response to ContentItem format
+        const contentItem: ContentItem = {
+          contentItemId: mediaResponse.path || `media-${Date.now()}`,
+          contentType: 'MediaFile',
+          displayText: displayText || mediaResponse.name,
+          owner: 'current-user',
+          author: 'current-user',
+          createdUtc: new Date(mediaResponse.createdUtc || Date.now()),
+          modifiedUtc: new Date(mediaResponse.createdUtc || Date.now()),
+          published: false,
+          containedPart: {
+            listContentItemId: folderId,
+            order: 0
+          },
+          taxonomyPart: {
+            repository: repository
+          },
+          contentSize: mediaResponse.size || file.size,
+          mimeType: mediaResponse.mimeType || file.type,
+          fileExtension: mediaResponse.name?.split('.').pop() || '',
+          mediaPath: mediaResponse.path,
+          mediaUrl: mediaResponse.url
+        };
+
+        // Add media item to folder's MediaItems field
+        const mediaItem = {
+          path: mediaResponse.path,
+          name: mediaResponse.name || file.name,
+          url: mediaResponse.url,
+          size: mediaResponse.size || file.size,
+          mimeType: mediaResponse.mimeType || file.type,
+          createdUtc: new Date(mediaResponse.createdUtc || Date.now())
+        };
+
+        return this.addMediaItemToFolder(folderId, mediaItem).pipe(
+          map(() => contentItem)
+        );
+      }),
+      catchError(error => {
+        console.error('Error uploading file:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * Add a media item to a folder's MediaItems field using 3-stage approach:
+   * 1. Retrieve existing content item (folder) via GET
+   * 2. Update the specific Media Field within the content item
+   * 3. Send the complete updated content item back via POST (OrchardCore uses POST for updates)
+   *
+   * @param folderId Folder content item ID
+   * @param mediaItem Media item to add
+   * @returns Observable of updated folder
+   */
+  private addMediaItemToFolder(folderId: string, mediaItem: MediaItem): Observable<Folder> {
+    // Step 1: Retrieve existing content item (folder) to ensure we have all current data
+    // Note: OrchardCore uses /api/content/{id} not /api/contentitem/{id}
+    // Use API_URL which points to localhost:8080 (OrchardCore backend)
+    const contentItemUrl = `${this.API_URL}/${folderId}`;
+
+    return this.http.get<any>(contentItemUrl).pipe(
+      switchMap(contentItem => {
+        if (!contentItem) {
+          throw new Error(`Content item not found: ${folderId}`);
+        }
+
+        console.log('Step 1: Retrieved existing folder content item:', contentItem);
+
+        // Step 2: Update the specific Media Field within the content item
+        // OrchardCore may use different structures:
+        // - MediaPart.MediaField.Paths (array of path strings)
+        // - MediaItems (array of media item objects)
+        if (contentItem.MediaPart?.MediaField) {
+          // Structure: MediaPart.MediaField.Paths
+          if (!contentItem.MediaPart.MediaField.Paths) {
+            contentItem.MediaPart.MediaField.Paths = [];
+          }
+          contentItem.MediaPart.MediaField.Paths = [
+            ...contentItem.MediaPart.MediaField.Paths,
+            mediaItem.path
+          ];
+          console.log('Step 2: Updated MediaPart.MediaField.Paths:', contentItem.MediaPart.MediaField.Paths);
+        } else if (contentItem.MediaItems) {
+          // Structure: MediaItems array
+          contentItem.MediaItems = [...contentItem.MediaItems, mediaItem];
+          console.log('Step 2: Updated MediaItems field:', contentItem.MediaItems);
+        } else {
+          // Create new MediaItems field with the media item
+          console.warn('MediaItems field not found. Creating a new one.');
+          contentItem.MediaItems = [mediaItem];
+          console.log('Step 2: Created new MediaItems field:', contentItem.MediaItems);
+        }
+
+        // Step 3: Send the complete updated content item back via POST
+        // OrchardCore uses POST to /api/content for both create AND update
+        // When ContentItemId is included in the body, it updates the existing item
+        console.log('Step 3: Sending complete updated content item via POST to', this.API_URL);
+        return this.http.post<Folder>(this.API_URL, contentItem).pipe(
+          map(updatedFolder => {
+            console.log('Step 3: Successfully updated content item via POST');
+            return updatedFolder;
+          }),
+          catchError(error => {
+            console.error('Error in Step 3 - POST request failed:', error);
+            throw error;
+          })
+        );
+      }),
+      catchError(error => {
+        console.error('Error in Step 1 - GET request failed:', error);
         throw error;
       })
     );

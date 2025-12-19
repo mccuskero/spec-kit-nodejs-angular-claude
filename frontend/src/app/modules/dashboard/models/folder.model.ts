@@ -14,6 +14,15 @@ export interface TaxonomyPart {
   repository: RepositoryLocation;
 }
 
+export interface MediaItem {
+  path: string;
+  name: string;
+  url: string;
+  size?: number;
+  mimeType?: string;
+  createdUtc?: Date;
+}
+
 export interface Folder {
   contentItemId: string;
   displayText: string;
@@ -25,4 +34,5 @@ export interface Folder {
   containedPart: ContainedPart | null;
   listPart: ListPart;
   taxonomyPart: TaxonomyPart;
+  mediaItems?: MediaItem[];
 }
