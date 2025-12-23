@@ -1,0 +1,43 @@
+# Multi-stage Dockerfile for OrchardCore with Custom Media API
+# TARGETARCH and TARGETOS are set automatically when --platform is provided.
+# docker build -f Dockerfile.customAPI --no-cache -t orchardcore-customapi .
+# docker build -f Dockerfile.customAPI -t orchardcore-customapi .
+# docker build -f Dockerfile.customAPI --platform linux/x86_64 -t orchardcore-customapi .
+#
+# docker run -d -p 80:80 --name orchardcore-customapi orchardcore-customapi
+
+# =============================================================================
+# Stage 1: Build OrchardCore with CustomAPI module
+# =============================================================================
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build-env
+ARG TARGETOS
+LABEL stage=build-env
+WORKDIR /source
+
+# Copy custom module first (to absolute path /backend)
+# Project reference from /source/src/OrchardCore.Cms.Web goes up 4 levels then to /backend/src/...
+COPY ./backend/src/OrchardCore.Modules/OrchardCore.Media.CustomAPI /backend/src/OrchardCore.Modules/OrchardCore.Media.CustomAPI
+
+# Copy required files for building OrchardCore
+COPY ./3rd-Party/OrchardCore/src ./src
+COPY ./3rd-Party/OrchardCore/Directory.Build.props .
+COPY ./3rd-Party/OrchardCore/Directory.Packages.props .
+
+# Add ProjectReference to CustomAPI module in OrchardCore.Cms.Web
+RUN dotnet add src/OrchardCore.Cms.Web/OrchardCore.Cms.Web.csproj reference /backend/src/OrchardCore.Modules/OrchardCore.Media.CustomAPI/OrchardCore.Media.CustomAPI.Dockerfile.csproj
+
+# Build and publish, results are placed in /app
+RUN dotnet publish src/OrchardCore.Cms.Web/OrchardCore.Cms.Web.csproj -c Release -o /app --framework net10.0 /p:RunAnalyzers=false
+
+# =============================================================================
+# Stage 2: Build runtime image
+# =============================================================================
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-nanoserver-ltsc2025 AS build_windows
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS build_linux
+FROM build_${TARGETOS} AS aspnet
+
+EXPOSE 80
+ENV ASPNETCORE_URLS=http://+:80
+WORKDIR /app
+COPY --from=build-env /app/ .
+ENTRYPOINT ["dotnet", "OrchardCore.Cms.Web.dll"]

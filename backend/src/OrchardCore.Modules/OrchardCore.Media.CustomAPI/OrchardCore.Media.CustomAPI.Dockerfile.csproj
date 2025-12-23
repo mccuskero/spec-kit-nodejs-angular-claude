@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>OrchardCore.Media.CustomAPI</PackageId>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ProjectReference paths work in Docker context:
+         CustomAPI is at /backend/src/OrchardCore.Modules/OrchardCore.Media.CustomAPI
+         OrchardCore is at /source/src/OrchardCore -->
+    <ProjectReference Include="../../../../source/src/OrchardCore/OrchardCore.Module.Targets/OrchardCore.Module.Targets.csproj" />
+    <ProjectReference Include="../../../../source/src/OrchardCore/OrchardCore.Media.Abstractions/OrchardCore.Media.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>
